@@ -125,16 +125,22 @@ void servo_steps();
 void servo_sweep();
 
 void loop() { 
-  delay(30);
-  setPos(KNEE, 0, rightHand.knees[1]);
-  setPos(KNEE, 1, rightHand.knees[0]);
-  setPos(KNEE, 2, rightHand.knees[0]);
-  setPos(KNEE, 3, rightHand.knees[1]);
 
-  setPos(HIP, 0, rightHand.hips[1]);
-  setPos(HIP, 1, rightHand.hips[0]);
-  setPos(HIP, 2, rightHand.hips[0]);
-  setPos(HIP, 3, rightHand.hips[1]);
+  delay(15);
+  portDISABLE_INTERRUPTS();
+  struct_message rH = rightHand;
+  struct_message lH = rightHand;
+  portENABLE_INTERRUPTS();
+  
+  setPos(KNEE, 0, rH.knees[1]);
+  setPos(KNEE, 1, rH.knees[0]);
+  setPos(KNEE, 2, rH.knees[0]);
+  setPos(KNEE, 3, rH.knees[1]);
+
+  setPos(HIP, 0, rH.hips[1]);
+  setPos(HIP, 1, rH.hips[0]);
+  setPos(HIP, 2, rH.hips[0]);
+  setPos(HIP, 3, rH.hips[1]);
 }
 
 

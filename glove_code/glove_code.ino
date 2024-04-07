@@ -142,6 +142,5 @@ void loop() {
   // Send message via ESP-NOW
   esp_err_t result2 = esp_now_send(recvAddress, (uint8_t *) &myData, sizeof(myData));
   delay(15);
-  delay(1000);
   if(debug) printOutput();
 }
