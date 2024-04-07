@@ -9,14 +9,11 @@ uint8_t recvAddress[] = MAC_B1;
 esp_now_peer_info_t peerInfo;
 
 // data to send - change inside as needed
-typedef struct struct_message {
+struct struct_message {
   int state;
   int hips[4];
   int knees[4];
-} struct_message;
-
-// Create a struct_message called myData
-struct_message myData;
+} myData;
 
 // callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -44,7 +41,6 @@ void init_bluetooth(void ){
     return;
   }
 }
-
 
 void setup() {  
   // Serial.begin(115200);

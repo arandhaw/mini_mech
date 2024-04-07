@@ -1,4 +1,6 @@
 #include <ESP32Servo.h>
+#include <esp_now.h>
+#include <WiFi.h>
 
 // article on using servos: https://dronebotworkshop.com/esp32-servo/
 // I'm using the ESP32Servo Library by Kevin Harrington https://github.com/madhephaestus/ESP32Servo
@@ -7,6 +9,8 @@
 enum BodyPart {
   HIP, KNEE
 };
+
+volatile unsigned long last_message = 0;
 
 // left to right pins (left has screw terminal outline)
 // D26, D27, D14, D13, D23, D22, D21, D19
@@ -58,8 +62,43 @@ void setHips(int angle){
     setPos(HIP, i, angle);
   }
 }
+
+// Structure example to receive data
+// Must match the sender structure
+struct struct_message {
+  bool right_glove;
+  int state;
+  int hips[2];
+  int knees[2];
+} leftHand, rightHand;
+
+// callback function that will be executed when data is received
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  if(*incomingData == true){
+    //right hand
+    memcpy(&rightHand, incomingData, sizeof(rightHand));
+  } else {
+    //left hand
+    memcpy(&leftHand, incomingData, sizeof(leftHand));
+  }
+}
+
+void setup_receiver(){
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  // Init ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  
+  // Once ESPNow is successfully Init, we will register for recv CB to
+  // get recv packer info
+  esp_now_register_recv_cb(OnDataRecv);
+}
  
-void setup() {
+void setup_servos() {
   // Allow allocation of all timers
   ESP32PWM::allocateTimer(0);
   ESP32PWM::allocateTimer(1);
@@ -72,80 +111,70 @@ void setup() {
     hips[i].setPeriodHertz(50);
     hips[i].attach(hip_pins[i], 500, 2500);
   }
+}
+
+void setup(){
+  setup_servos();
+  setup_receiver();
   Serial.begin(115200);
+  // while(last_message == 0){}
+}
+
+void walking_routine();
+void servo_steps();
+void servo_sweep();
+
+void loop() { 
+  delay(30);
+  setPos(KNEE, 0, rightHand.knees[1]);
+  setPos(KNEE, 1, rightHand.knees[0]);
+  setPos(KNEE, 2, rightHand.knees[0]);
+  setPos(KNEE, 3, rightHand.knees[1]);
+
+  setPos(HIP, 0, rightHand.hips[1]);
+  setPos(HIP, 1, rightHand.hips[0]);
+  setPos(HIP, 2, rightHand.hips[0]);
+  setPos(HIP, 3, rightHand.hips[1]);
 }
 
 
-void loop() { 
-//    Serial.println("Enter number, 0-4 for knee, 5-8 for hip");  
-//    while (!Serial.available()){}  
-//    int num = Serial.readStringUntil('\n').toInt(); //Reading the Input string from Serial port.  
-//    // Serial.printf("%d", num);
-//
-//    Serial.println("Enter angle");  
-//    while (!Serial.available()){}  
-//    int angle = Serial.readStringUntil('\n').toInt(); //Reading the Input string from Serial port.  
-//    // Serial.printf("%d", angle);
-//    BodyPart part;
-//    if(num < 4){ 
-//      part = KNEE; 
-//      Serial.printf("Knee %d to %d", num, angle);
-//    } else { 
-//      part = HIP; 
-//      num -= 4; 
-//      Serial.printf("Hip %d to %d \n", num, angle);
-//    }
 
-//
-//  // rotate by 10 degree steps routine
-//  for(int i = 0; i <= 180; i += 10){
-//     setHips(i);
-//     delay(1500);
-//  }
-//  delay(3000);
-//  for(int i = 180; i >= 0; i -= 10){
-//     setHips(i);
-//     delay(1500);
-//  }
-//  delay(3000);
-//  // 120 degrees
-   
+void servo_steps(){
+
+  // rotate by 10 degree steps routine
+  for(int i = 0; i <= 180; i += 10){
+     setHips(i);
+     delay(1500);
+  }
+  delay(3000);
+  for(int i = 180; i >= 0; i -= 10){
+     setHips(i);
+     delay(1500);
+  }
+  delay(3000);
+  // 120 degrees  
+}
+
+void servo_sweep(){
     
-    
-//  for (int pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
-//    // in steps of 1 degree
-//      for(int i = 0; i < 8; i++){
-//        setPos(i , pos);
-//      }  
-//    delay(15);             // waits 15ms for the servo to reach the position
-//  }
-//  for (int pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
-//      for(int i = 0; i < 8; i++){
-//        setPos(i, pos);
-//      }   
-//    delay(15);             // waits 15ms for the servo to reach the position
-//  }
-  
-//  setKnees(0);
-//  setHips(150);
-//  delay(2000);
-//  setKnees(160);
-//  delay(2000);
-//
-//
-//  setPos(HIP, 0, 180);
-//  setPos(HIP, 3, 180);
-//  setPos(HIP, 1, 130);
-//  setPos(HIP, 2, 130);
-//  delay(2000);
-//
-//  setPos(HIP, 0, 130);
-//  setPos(HIP, 3, 130);
-//  setPos(HIP, 1, 180);
-//  setPos(HIP, 2, 180);
-//  delay(2000);
-//  setHips(150);
-//  delay(2000);
+  for (int pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
+    // in steps of 1 degree
+      for(int i = 0; i < 4; i++){
+        setPos(KNEE, i, pos);
+        setPos(HIP, i, pos);
+      }  
+    delay(15);             // waits 15ms for the servo to reach the position
+  }
+  for (int pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
+      for(int i = 0; i < 4; i++){
+        setPos(KNEE, i, pos);
+        setPos(HIP, i, pos);
+      }   
+    delay(15);             // waits 15ms for the servo to reach the position
+  }
+}
+
+void walking_routine(void){
 
   setKnees(170);
   setHips(150);
@@ -177,7 +206,23 @@ void loop() {
   setKnees(170);
   delay(2000);
 
-  
-    
-
 }
+
+//    Serial.println("Enter number, 0-4 for knee, 5-8 for hip");  
+//    while (!Serial.available()){}  
+//    int num = Serial.readStringUntil('\n').toInt(); //Reading the Input string from Serial port.  
+//    // Serial.printf("%d", num);
+//
+//    Serial.println("Enter angle");  
+//    while (!Serial.available()){}  
+//    int angle = Serial.readStringUntil('\n').toInt(); //Reading the Input string from Serial port.  
+//    // Serial.printf("%d", angle);
+//    BodyPart part;
+//    if(num < 4){ 
+//      part = KNEE; 
+//      Serial.printf("Knee %d to %d", num, angle);
+//    } else { 
+//      part = HIP; 
+//      num -= 4; 
+//      Serial.printf("Hip %d to %d \n", num, angle);
+//    }

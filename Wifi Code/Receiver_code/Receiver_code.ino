@@ -30,10 +30,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.println(myData.knees[3]);
 }
 
-void setup() {
-  // Initialize Serial Monitor
-  Serial.begin(115200);
-  
+void setup_receiver(){
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
 
@@ -46,6 +43,10 @@ void setup() {
   // Once ESPNow is successfully Init, we will register for recv CB to
   // get recv packer info
   esp_now_register_recv_cb(OnDataRecv);
+}
+
+void setup() {
+  setup_receiver();
 }
  
 void loop() {
