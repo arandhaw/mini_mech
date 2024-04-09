@@ -20,7 +20,7 @@ Servo hips[4];
 Servo knees[4];
 int hip_pins[4] = {27, 13, 23, 21};
 int knee_pins[4] = {26, 14, 22, 19};
-bool reverse_hips[8] = {0, 1, 0, 1};
+bool reverse_hips[8] = {0, 1, 1, 0};
 bool reverse_knees[8] = {1, 1, 0, 0};
 
 void setPos(BodyPart part, int num, int angle){
@@ -36,17 +36,11 @@ void setPos(BodyPart part, int num, int angle){
   }
   if(part == HIP){
 
-    if(num == 0 || num == 3){
-      angle = angle * 2/3 + 60;   // 60 to 180
-    } else {
-      angle = angle * 2/3;        // 0 to 120
-    }
-
     if(reverse_hips[num]){
       angle = 180 - angle;
-    } else {
-      angle = angle;
     }
+    
+    angle = angle * 165/180;
     hips[num].write(angle);
   }
 }
@@ -74,6 +68,9 @@ struct struct_message {
 
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+
+  
+  
   if(*incomingData == true){
     //right hand
     memcpy(&rightHand, incomingData, sizeof(rightHand));
@@ -129,18 +126,18 @@ void loop() {
   delay(15);
   portDISABLE_INTERRUPTS();
   struct_message rH = rightHand;
-  struct_message lH = rightHand;
+  struct_message lH = leftHand;
   portENABLE_INTERRUPTS();
   
-  setPos(KNEE, 0, rH.knees[1]);
+  setPos(KNEE, 3, lH.knees[0]);
+  setPos(KNEE, 2, lH.knees[1]);
   setPos(KNEE, 1, rH.knees[0]);
-  setPos(KNEE, 2, rH.knees[0]);
-  setPos(KNEE, 3, rH.knees[1]);
+  setPos(KNEE, 0, rH.knees[1]);
 
-  setPos(HIP, 0, rH.hips[1]);
+  setPos(HIP, 3, lH.hips[0]);
+  setPos(HIP, 2, lH.hips[1]);
   setPos(HIP, 1, rH.hips[0]);
-  setPos(HIP, 2, rH.hips[0]);
-  setPos(HIP, 3, rH.hips[1]);
+  setPos(HIP, 0, rH.hips[1]);
 }
 
 
