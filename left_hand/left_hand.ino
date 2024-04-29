@@ -1,3 +1,8 @@
+//Code running on left hand glove
+//Identical to right hand except for small differences
+//This file is not documented since it is so similar to right_hand
+// see right_hand file to read a fully documented version
+
 #include <esp_now.h>
 #include <WiFi.h>
 #include <Arduino.h>

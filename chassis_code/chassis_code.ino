@@ -9,20 +9,21 @@
 enum BodyPart {
   HIP, KNEE
 };
-
-volatile unsigned long last_message = 0;
-
-// left to right pins (left has screw terminal outline)
-// D26, D27, D14, D13, D23, D22, D21, D19
-// knee0, hip0, knee1, hip1, hip2, knee2, hip3, knee3
-// left to right
+// Knee/Hip servos are ordered left to right
 Servo hips[4];
 Servo knees[4];
 int hip_pins[4] = {27, 13, 23, 21};
 int knee_pins[4] = {26, 14, 22, 19};
+// We attempted to keep the following convention: 
+// Knees: 0 degrees is fully retracted, 180 extended
+// Hips: Different from each hip. 0 degrees is legs pointed backwards, 180 degrees pulled forward.
 bool reverse_hips[8] = {0, 1, 1, 0};
 bool reverse_knees[8] = {1, 1, 0, 0};
 
+// function to set the position of the motors 
+// @part KNEE or HIP
+// @num the motor number, from 0 to 3. Numbered from left to right.
+// @angle An angle between 0 and 180 degrees.
 void setPos(BodyPart part, int num, int angle){
   if(part == KNEE){
     
@@ -45,19 +46,22 @@ void setPos(BodyPart part, int num, int angle){
   }
 }
 
+// Unused in working code, just for testing
+// Set angle of all knees at once
 void setKnees(int angle){
   for(int i = 0; i < 4; i++){
     setPos(KNEE, i, angle);
   }
 }
-
+// Unused in working code, just for testing
+// Set angle of all hips
 void setHips(int angle){
   for(int i = 0; i < 4; i++){
     setPos(HIP, i, angle);
   }
 }
 
-// Structure example to receive data
+// Struct received via bluetooth from gloves
 // Must match the sender structure
 struct struct_message {
   bool right_glove;
@@ -67,10 +71,14 @@ struct struct_message {
 } leftHand, rightHand;
 
 // callback function that will be executed when data is received
+// I believe this is triggered by interrupts
+// copies the data into right_hand/left_hand based on whether the 
+// first boolean of the message is true/false
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-
-  
-  
+  // This is a bit of a hack
+  // *incomingData deferences the first byte of data
+  // This happens to be the boolean "right_glove" that identifies the glove 
+  // as left/right
   if(*incomingData == true){
     //right hand
     memcpy(&rightHand, incomingData, sizeof(rightHand));
@@ -80,6 +88,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   }
 }
 
+// Sets up the bluetooth library
+// Called on startup
 void setup_receiver(){
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -94,14 +104,16 @@ void setup_receiver(){
   // get recv packer info
   esp_now_register_recv_cb(OnDataRecv);
 }
- 
+
+// Sets up the servos
 void setup_servos() {
   // Allow allocation of all timers
   ESP32PWM::allocateTimer(0);
   ESP32PWM::allocateTimer(1);
   ESP32PWM::allocateTimer(2);
   ESP32PWM::allocateTimer(3);
-
+  
+  // sets the frequency and PWM ranges, and attaches the pins of each servo
   for(int i = 0; i < 4; i++){    
     knees[i].setPeriodHertz(50);
     knees[i].attach(knee_pins[i], 500, 2500);
@@ -110,10 +122,11 @@ void setup_servos() {
   }
 }
 
+// Called on startup
 void setup(){
   setup_servos();
   setup_receiver();
-  Serial.begin(115200);
+  Serial.begin(115200);   // for debugging
   // while(last_message == 0){}
 }
 
@@ -121,10 +134,13 @@ void walking_routine();
 void servo_steps();
 void servo_sweep();
 
+// Main loop of controller
 void loop() { 
 
   delay(15);
-  portDISABLE_INTERRUPTS();
+  // Disable interrupts, and copy data to struct rH, lH
+  // the reason for this convoluted chain of copies is to avoid race conditions
+  portDISABLE_INTERRUPTS();   
   struct_message rH = rightHand;
   struct_message lH = leftHand;
   portENABLE_INTERRUPTS();
@@ -141,7 +157,10 @@ void loop() {
 }
 
 
+// the rest of these functions were just for debugging
+// they move the legs in various routines
 
+// this one sweeps the servos over 180 degrees in 10 degree steps
 void servo_steps(){
 
   // rotate by 10 degree steps routine
@@ -158,6 +177,7 @@ void servo_steps(){
   // 120 degrees  
 }
 
+// move all the servos in a 180 degree sweep
 void servo_sweep(){
     
   for (int pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
@@ -177,6 +197,7 @@ void servo_sweep(){
   }
 }
 
+// Make the servo walk itself
 void walking_routine(void){
 
   setKnees(170);
